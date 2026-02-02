@@ -25,6 +25,7 @@ export interface FilmAnalysis {
   shots: Shot[];
   audio: AudioStats;
   visualSummary: string;
+  frames?: { data: string; timestamp: number }[];
 }
 
 export interface AnalysisState {

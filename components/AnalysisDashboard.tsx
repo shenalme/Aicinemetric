@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, Line
 } from 'recharts';
-import { FilmAnalysis, Shot } from '../types';
-import { Download, FileVideo, Music, Layout, Palette, Clock, Info } from 'lucide-react';
+import { FilmAnalysis } from '../types';
+import { Download, FileVideo, Music, Layout, Palette, Clock, Info, Aperture, Layers } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -18,7 +18,12 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis }) => {
     const element = document.getElementById('analysis-report');
     if (!element) return;
     
-    const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#0a0a0a' });
+    const canvas = await html2canvas(element, { 
+      scale: 2, 
+      backgroundColor: '#0a0a0a',
+      useCORS: true,
+      logging: false
+    });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const imgProps = pdf.getImageProperties(imgData);
@@ -26,183 +31,223 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis }) => {
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${analysis.title.replace(/\s+/g, '_')}_Analysis.pdf`);
+    pdf.save(`${analysis.title.replace(/\s+/g, '_')}_Cinematics.pdf`);
   };
 
   const shotData = analysis.shots.map(s => ({
-    name: `Shot ${s.id}`,
+    name: `S${s.id}`,
     duration: s.duration,
     asl: analysis.asl
   }));
 
-  const colorData = analysis.dominantColors.map((color, idx) => ({
-    name: color,
-    value: 1,
-    color
-  }));
+  const getAslCategory = (asl: number) => {
+    if (asl < 3) return { label: "High-Octane", color: "text-red-400", desc: "Similar to modern action films (Mad Max, Bourne)." };
+    if (asl < 6) return { label: "Contemporary", color: "text-amber-400", desc: "Standard Hollywood blockbuster pacing." };
+    if (asl < 10) return { label: "Measured", color: "text-emerald-400", desc: "Classic drama or suspense pacing." };
+    return { label: "Contemplative", color: "text-indigo-400", desc: "Slow cinema / Art-house style (Tarkovsky, Ozu)." };
+  };
+
+  const aslInfo = getAslCategory(analysis.asl);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-        <div>
-          <h1 className="serif text-4xl md:text-5xl text-white mb-2">{analysis.title}</h1>
-          <p className="text-zinc-400 uppercase tracking-widest text-sm flex items-center gap-2">
-            <Clock className="w-4 h-4" /> Cinematic Analysis Report
+    <div className="w-full max-w-7xl mx-auto px-4 py-12 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 text-indigo-400 mb-2">
+            <Aperture className="w-5 h-5 animate-spin-slow" />
+            <span className="uppercase tracking-[0.3em] text-xs font-bold">Comprehensive Analysis</span>
+          </div>
+          <h1 className="serif text-5xl md:text-7xl text-white font-bold leading-none">{analysis.title}</h1>
+          <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">
+            Index: {new Date().toLocaleDateString()} // ML-MODEL: GEMINI-3-FLASH
           </p>
         </div>
         <button 
           onClick={downloadPDF}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105"
+          className="group flex items-center gap-3 bg-white text-black hover:bg-zinc-200 px-8 py-4 rounded-full font-bold transition-all transform hover:-translate-y-1"
         >
-          <Download className="w-5 h-5" /> Download PDF Report
+          <Download className="w-5 h-5 group-hover:bounce" /> Export Cinematic Report
         </button>
       </div>
 
-      <div id="analysis-report" className="space-y-8 bg-zinc-950 p-6 md:p-10 rounded-3xl border border-white/5 shadow-2xl">
-        {/* Quick Stats */}
+      <div id="analysis-report" className="space-y-10 bg-black/40 p-2 md:p-6 rounded-[2.5rem]">
+        
+        {/* Cinematic Pulse (Barcode) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-4">
+            <h3 className="serif text-xl text-white">Cinematic Pulse</h3>
+            <span className="text-xs text-zinc-500 uppercase tracking-widest">Color Chronology</span>
+          </div>
+          <div className="h-24 w-full rounded-2xl overflow-hidden flex shadow-2xl border border-white/5">
+            {analysis.shots.map((shot, idx) => (
+              <div 
+                key={idx} 
+                className="h-full flex-grow transition-all hover:scale-y-110 hover:z-10" 
+                style={{ 
+                  backgroundColor: shot.colors[0],
+                  width: `${(shot.duration / analysis.shots.reduce((acc, s) => acc + s.duration, 0)) * 100}%` 
+                }}
+                title={`Shot ${shot.id}: ${shot.colors[0]}`}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Primary Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard 
             icon={<Clock className="text-indigo-400" />} 
-            label="Avg Shot Length (ASL)" 
+            label="Average Shot Length" 
             value={`${analysis.asl.toFixed(2)}s`} 
-            desc="Calculated mean across identified cuts"
+            badge={aslInfo.label}
+            badgeColor={aslInfo.color}
+            desc={aslInfo.desc}
           />
           <StatCard 
-            icon={<FileVideo className="text-emerald-400" />} 
-            label="Total Identified Shots" 
+            icon={<Layers className="text-emerald-400" />} 
+            label="Discontinuity Count" 
             value={analysis.totalShots.toString()} 
-            desc="Visual discontinuities detected"
+            desc="Total visual cuts detected in sequence."
           />
           <StatCard 
             icon={<Palette className="text-pink-400" />} 
-            label="Dominant Palette" 
+            label="Thematic Palette" 
             value={analysis.dominantColors.length.toString()} 
-            desc="Key thematic hues extracted"
+            desc="Key color anchors defining the visual mood."
           />
         </div>
 
-        {/* Visual Charts Row 1 */}
+        {/* Visual Analytics Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-400" /> Shot Duration Timeline
-            </h3>
-            <div className="h-64 w-full">
+          {/* Shot Duration Chart */}
+          <div className="bg-zinc-900/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="serif text-2xl text-white">Rhythm & Pace</h3>
+              <Clock className="w-5 h-5 text-indigo-500/50" />
+            </div>
+            <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={shotData}>
                   <defs>
                     <linearGradient id="colorDur" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="name" stroke="#666" fontSize={10} />
-                  <YAxis stroke="#666" fontSize={10} label={{ value: 'Secs', angle: -90, position: 'insideLeft', fill: '#666' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                  <XAxis dataKey="name" stroke="#444" fontSize={10} axisLine={false} tickLine={false} />
+                  <YAxis stroke="#444" fontSize={10} axisLine={false} tickLine={false} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '12px' }}
+                    itemStyle={{ color: '#818cf8' }}
                   />
-                  <Area type="monotone" dataKey="duration" stroke="#818cf8" fillOpacity={1} fill="url(#colorDur)" />
-                  <Line type="monotone" dataKey="asl" stroke="#f43f5e" strokeDasharray="5 5" dot={false} strokeWidth={2} />
+                  <Area type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorDur)" />
+                  <Line type="monotone" dataKey="asl" stroke="#f43f5e" strokeDasharray="8 4" dot={false} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <p className="text-xs text-zinc-500 mt-4 italic">Red dashed line indicates Average Shot Length (ASL).</p>
           </div>
 
-          <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-              <Palette className="w-5 h-5 text-pink-400" /> Dominant Colors
-            </h3>
-            <div className="flex flex-wrap gap-4 items-center justify-center h-48">
-              {analysis.dominantColors.map((color, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <div 
-                    className="w-16 h-16 rounded-full shadow-lg border border-white/10"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-xs font-mono text-zinc-500">{color}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 flex gap-1 h-3 rounded-full overflow-hidden">
-              {analysis.dominantColors.map((color, i) => (
-                <div key={i} className="flex-1" style={{ backgroundColor: color }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Audio Section */}
-        <div className="bg-zinc-900/50 p-8 rounded-2xl border border-white/5">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Music className="w-6 h-6 text-amber-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">Aural Atmosphere</h3>
-              <p className="text-sm text-zinc-400">Audio dynamics and musical analysis</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div>
-                <span className="text-xs uppercase text-zinc-500 font-bold">Estimated Mood</span>
-                <p className="text-lg text-white font-medium">{analysis.audio.mood}</p>
+          {/* Extracted Frames Gallery */}
+          {analysis.frames && (
+            <div className="bg-zinc-900/40 p-8 rounded-[2rem] border border-white/5 overflow-hidden">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="serif text-2xl text-white">Visual Sample</h3>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-mono">Frames 1-{analysis.frames.length}</span>
               </div>
-              <div>
-                <span className="text-xs uppercase text-zinc-500 font-bold">Musical Texture</span>
-                <p className="text-zinc-300">{analysis.audio.musicDescription}</p>
-              </div>
-            </div>
-            <div className="bg-zinc-800/40 p-5 rounded-xl">
-              <h4 className="text-sm font-semibold mb-3">Key Auditory Events</h4>
-              <ul className="space-y-2">
-                {analysis.audio.keyEvents.map((evt, idx) => (
-                  <li key={idx} className="text-sm text-zinc-400 flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                    {evt}
-                  </li>
+              <div className="grid grid-cols-3 gap-3">
+                {analysis.frames.slice(0, 9).map((frame, i) => (
+                  <div key={i} className="aspect-video bg-zinc-800 rounded-lg overflow-hidden border border-white/5 group relative">
+                    <img 
+                      src={`data:image/jpeg;base64,${frame.data}`} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                      alt={`Frame ${i}`} 
+                    />
+                    <div className="absolute bottom-1 right-1 px-1 bg-black/60 rounded text-[8px] text-white font-mono">
+                      {frame.timestamp.toFixed(1)}s
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Audio atmosphere */}
+        <div className="bg-zinc-900/40 p-10 rounded-[2.5rem] border border-white/5 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] -mr-32 -mt-32" />
+          <div className="relative z-10 flex flex-col md:flex-row gap-12">
+            <div className="md:w-1/3 space-y-4">
+              <div className="flex items-center gap-3">
+                <Music className="w-8 h-8 text-amber-500" />
+                <h3 className="serif text-3xl text-white">Aural Texture</h3>
+              </div>
+              <p className="text-zinc-400 leading-relaxed italic border-l-2 border-amber-500/30 pl-4">
+                "{analysis.audio.musicDescription}"
+              </p>
+              <div className="pt-4">
+                <span className="text-[10px] uppercase text-zinc-500 font-bold tracking-widest">Dominant Mood</span>
+                <p className="text-xl text-amber-200 font-medium tracking-tight uppercase italic">{analysis.audio.mood}</p>
+              </div>
+            </div>
+            <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {analysis.audio.keyEvents.map((evt, idx) => (
+                <div key={idx} className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-[10px] font-bold mb-3">
+                    0{idx + 1}
+                  </div>
+                  <p className="text-sm text-zinc-300">{evt}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Detailed Shots List */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Layout className="w-5 h-5 text-emerald-400" /> Shot-by-Shot Breakdown
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Breakdown List */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-4">
+            <Layout className="w-6 h-6 text-emerald-400" />
+            <h3 className="serif text-3xl text-white">Shot Syntax</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {analysis.shots.map(shot => (
-              <div key={shot.id} className="bg-zinc-900/30 border border-white/5 p-4 rounded-xl hover:border-white/20 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-mono px-2 py-0.5 bg-zinc-800 rounded text-zinc-400">Shot {shot.id}</span>
-                  <span className="text-xs font-semibold text-indigo-400">{shot.duration.toFixed(1)}s</span>
+              <div key={shot.id} className="bg-zinc-900/30 border border-white/5 p-6 rounded-[1.5rem] hover:bg-zinc-900/60 transition-all group">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-mono text-[10px] text-zinc-500">SHOT_ID: {shot.id}</span>
+                  <div className="flex gap-1">
+                    {shot.colors.map((c, i) => (
+                      <div key={i} className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
                 </div>
-                <h4 className="font-medium text-white mb-2">{shot.description}</h4>
-                <div className="text-xs text-zinc-500 space-y-1">
-                  <p><strong className="text-zinc-400">Movement:</strong> {shot.cameraMovement}</p>
-                  <p><strong className="text-zinc-400">Composition:</strong> {shot.composition}</p>
-                </div>
-                <div className="mt-3 flex gap-1">
-                  {shot.colors.map((c, i) => (
-                    <div key={i} className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: c }} />
-                  ))}
+                <h4 className="text-white font-medium mb-4 group-hover:text-emerald-400 transition-colors">{shot.description}</h4>
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500 uppercase tracking-tighter">Movement</span>
+                    <span className="text-zinc-300 font-medium">{shot.cameraMovement}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500 uppercase tracking-tighter">Duration</span>
+                    <span className="text-indigo-400 font-bold">{shot.duration.toFixed(1)}s</span>
+                  </div>
+                  <div className="pt-3 border-t border-white/5 text-zinc-400 leading-snug">
+                    <strong className="text-zinc-500 block text-[9px] uppercase mb-1">Composition Notes</strong>
+                    {shot.composition}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Visual Summary */}
-        <div className="bg-indigo-900/10 border border-indigo-500/20 p-6 rounded-2xl">
-          <h3 className="text-lg font-bold text-indigo-300 mb-2 flex items-center gap-2">
-            <Info className="w-5 h-5" /> Narrative Synthesis
-          </h3>
-          <p className="text-zinc-300 leading-relaxed italic">
+        {/* Summary */}
+        <div className="bg-gradient-to-br from-indigo-600/10 to-transparent border border-indigo-500/20 p-12 rounded-[3rem] text-center max-w-4xl mx-auto">
+          <div className="bg-indigo-600/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Info className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h3 className="serif text-3xl text-white mb-6">Cinematic Synthesis</h3>
+          <p className="text-xl text-zinc-300 leading-relaxed font-light italic">
             "{analysis.visualSummary}"
           </p>
         </div>
@@ -211,12 +256,19 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis }) => {
   );
 };
 
-const StatCard = ({ icon, label, value, desc }: { icon: React.ReactNode, label: string, value: string, desc: string }) => (
-  <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5 hover:bg-zinc-900 transition-all cursor-default">
-    <div className="mb-4">{icon}</div>
-    <div className="text-3xl font-bold text-white mb-1">{value}</div>
-    <div className="text-sm font-semibold text-zinc-300 mb-1">{label}</div>
-    <div className="text-xs text-zinc-500">{desc}</div>
+const StatCard = ({ icon, label, value, desc, badge, badgeColor }: any) => (
+  <div className="bg-zinc-900/50 p-8 rounded-[2rem] border border-white/5 hover:border-white/20 transition-all group">
+    <div className="mb-6 transform group-hover:scale-110 transition-transform">{icon}</div>
+    <div className="flex items-baseline gap-3 mb-2">
+      <div className="text-4xl font-bold text-white tracking-tighter">{value}</div>
+      {badge && (
+        <span className={`text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 font-bold uppercase ${badgeColor}`}>
+          {badge}
+        </span>
+      )}
+    </div>
+    <div className="text-sm font-semibold text-zinc-300 mb-2 uppercase tracking-widest">{label}</div>
+    <div className="text-xs text-zinc-500 leading-relaxed">{desc}</div>
   </div>
 );
 
