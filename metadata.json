@@ -1,0 +1,5 @@
+{
+  "name": "Cinemetrics AI",
+  "description": "A sophisticated film analysis tool that uses AI to break down cinematic elements including shot lengths, ASL, color palettes, and audio characteristics from uploaded video files.",
+  "requestFramePermissions": []
+}
